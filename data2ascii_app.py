@@ -2,9 +2,9 @@ import streamlit as st
 import pandas as pd
 from io import StringIO
 
-st.set_page_config(page_title="ASCII Graph Plotter with Themes", layout="wide")
-st.title("🎨 ASCII Graph Plotter with Themes & Sample Data")
-st.write("Upload your dataset or choose a sample dataset to visualize with ASCII charts!")
+st.set_page_config(page_title="ASCII Graph Plotter", layout="wide")
+st.title("ASCII Graph Plotter 🏹")
+st.write("Upload your dataset or select a sample dataset to visualize with ASCII charts!")
 
 # ---------------------------
 # Step 1: Sample Datasets
@@ -57,11 +57,11 @@ if df is not None:
     # ---------------------------
     # Step 3: Select Chart Type
     # ---------------------------
-    chart_type = st.selectbox("Select chart type", ["Bar Chart", "Line Chart", "Scatter Plot"])
+    chart_type = st.selectbox("Select chart type", ["Vertical Bar Chart", "Horizontal Bar Chart", "Line Chart", "Scatter Plot"])
 
     numeric_cols = df.select_dtypes(include='number').columns.tolist()
     
-    if chart_type in ["Bar Chart", "Line Chart"]:
+    if chart_type in ["Vertical Bar Chart", "Horizontal Bar Chart", "Line Chart"]:
         if len(numeric_cols) == 0:
             st.warning("No numeric columns found!")
         else:
@@ -69,7 +69,7 @@ if df is not None:
             x_col = None
             if chart_type == "Line Chart":
                 x_col = st.selectbox("Select x-axis (optional)", [None] + df.columns.tolist())
-    else:  # Scatter
+    elif chart_type == "Scatter Plot":
         if len(numeric_cols) < 2:
             st.warning("Need at least two numeric columns for scatter plot!")
         else:
@@ -77,70 +77,96 @@ if df is not None:
             y_col = st.selectbox("Select Y column", numeric_cols)
 
     # ---------------------------
-    # Step 4: Chart Size & Theme
+    # Step 4: Chart Size
     # ---------------------------
-    width = st.slider("Chart width", 20, 80, 40)
+    width = st.slider("Chart width", 10, 80, 40)
     height = st.slider("Chart height", 5, 20, 10)
-    theme = st.selectbox("Select theme", ["Classic", "Fancy", "Retro"])
 
     # ---------------------------
     # Step 5: ASCII Chart Functions
     # ---------------------------
-    def bar_chart(data, labels, max_width=40, theme="Fancy"):
-        if theme == "Classic":
-            return "\n".join(f"{label:10} | {'#'*int((v/max(data))*max_width)} {v}" for label, v in zip(labels, data))
-        elif theme == "Retro":
-            return "\n".join(f"{label:10} | {'='*int((v/max(data))*max_width)} {v}" for label, v in zip(labels, data))
-        else:
-            gradient = ["░","▒","▓","█"]
-            result = []
-            max_val = max(data)
-            for label, value in zip(labels, data):
-                bar_len = int((value / max_val) * max_width)
-                full_blocks = bar_len // 4
-                remainder = bar_len % 4
-                bar = "█"*full_blocks + (gradient[remainder] if remainder else "")
-                result.append(f"{label:10} | {bar} {value}")
-            return "\n".join(result)
 
-    def line_chart(y_data, x_data=None, height=10, theme="Fancy"):
-        max_val, min_val = max(y_data), min(y_data)
+    # Vertical Bar Chart
+    def vertical_bar_chart(values, labels, height=10):
+        max_val = max(values)
+        scale = max_val / height
+        chart_lines = []
+        for i in range(height, 0, -1):
+            line = f"{int(i*scale):>3} ┤ "
+            for val in values:
+                line += "█   " if val >= i*scale else "    "
+            chart_lines.append(line)
+        chart_lines.append("  0 ┼" + "────"*len(values))
+        label_line = "     "
+        for label in labels:
+            label_line += f"{label:<4}"
+        chart_lines.append(label_line)
+        return "\n".join(chart_lines)
+
+    # Horizontal Bar Chart
+    def horizontal_bar_chart(values, labels, max_width=20):
+        gradient = ["░", "▒", "▓", "█"]
+        max_val = max(values)
+        chart_lines = []
+        for label, val in zip(labels, values):
+            bar_len = int((val / max_val) * max_width)
+            full_blocks = bar_len // 4
+            remainder = bar_len % 4
+            bar = "█"*full_blocks + (gradient[remainder] if remainder else "")
+            chart_lines.append(f"{label:<10} | {bar:<{max_width}} {val}")
+        return "\n".join(chart_lines)
+
+    # Line Chart
+    def line_chart(y_data, height=10):
+        max_val = max(y_data)
+        min_val = min(y_data)
         scale = (max_val - min_val)/height or 1
-        if x_data is None:
-            x_data = list(range(len(y_data)))
-        markers = {"Classic":"*","Retro":"o","Fancy":"•"}
-        mark = markers.get(theme,"•")
-        lines = []
-        for level in range(height, -1, -1):
+        chart_lines = []
+        for level in range(height, 0, -1):
             line_val = min_val + level*scale
-            line = f"{line_val:>6.2f} ┤ "
+            line = f"{int(line_val):>3} ┤ "
             for y in y_data:
-                line += mark+" " if abs(y - line_val)<scale/2 else "  "
-            lines.append(line)
-        return "\n".join(lines)
+                line += "╭─╮" if abs(y - line_val) < scale/2 else "   "
+            chart_lines.append(line)
+        chart_lines.append(f"{int(min(y_data))} ┼" + "───"*len(y_data))
+        x_labels = "     "
+        for i in range(len(y_data)):
+            x_labels += f"{i:<3}"
+        chart_lines.append(x_labels)
+        return "\n".join(chart_lines)
 
-    def scatter_plot(x, y, width=40, height=10, theme="Fancy"):
-        markers_dict = {"Classic":["*"],"Retro":["o","+"] ,"Fancy":["•","×","+"]}
-        markers = markers_dict.get(theme, ["•"])
+    # Scatter Plot
+    def scatter_plot(x, y, width=40, height=10):
         min_x, max_x = min(x), max(x)
         min_y, max_y = min(y), max(y)
         grid = [[" " for _ in range(width)] for _ in range(height)]
-        for i, (xi, yi) in enumerate(zip(x, y)):
-            col = int((xi-min_x)/(max_x-min_x)*(width-1))
-            row = height-1 - int((yi-min_y)/(max_y-min_y)*(height-1))
-            grid[row][col] = markers[i % len(markers)]
-        return "\n".join("".join(row) for row in grid)
+        for xi, yi in zip(x, y):
+            col = int((xi - min_x)/(max_x - min_x)*(width-1))
+            row = height - 1 - int((yi - min_y)/(max_y - min_y)*(height-1))
+            grid[row][col] = "•"
+        chart_lines = []
+        for i, row in enumerate(grid):
+            chart_lines.append(f"{int(max_y - i*(max_y-min_y)/height):>3} | " + "".join(row))
+        chart_lines.append("    " + "-"*width)
+        x_labels = "     "
+        for xi in range(width):
+            x_val = int(min_x + xi*(max_x-min_x)/(width-1))
+            x_labels += f"{x_val%10}"
+        chart_lines.append(x_labels)
+        return "\n".join(chart_lines)
 
     # ---------------------------
     # Step 6: Generate Chart
     # ---------------------------
     chart_text = ""
-    if chart_type=="Bar Chart" and y_col:
-        chart_text = bar_chart(df[y_col], df.index.astype(str), max_width=width, theme=theme)
-    elif chart_type=="Line Chart" and y_col:
-        chart_text = line_chart(df[y_col], df[x_col] if x_col else None, height=height, theme=theme)
-    elif chart_type=="Scatter Plot" and x_col and y_col:
-        chart_text = scatter_plot(df[x_col], df[y_col], width=width, height=height, theme=theme)
+    if chart_type == "Vertical Bar Chart" and y_col:
+        chart_text = vertical_bar_chart(df[y_col], df.index.astype(str), height=height)
+    elif chart_type == "Horizontal Bar Chart" and y_col:
+        chart_text = horizontal_bar_chart(df[y_col], df.index.astype(str), max_width=width)
+    elif chart_type == "Line Chart" and y_col:
+        chart_text = line_chart(df[y_col], height=height)
+    elif chart_type == "Scatter Plot" and x_col and y_col:
+        chart_text = scatter_plot(df[x_col], df[y_col], width=width, height=height)
 
     if chart_text:
         st.subheader("ASCII Chart")
