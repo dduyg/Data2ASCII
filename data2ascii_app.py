@@ -3,8 +3,8 @@ import pandas as pd
 from io import StringIO
 
 st.set_page_config(page_title="ASCII Graph Plotter", layout="wide")
-st.title("ASCII Graph Plotter 🏹")
-st.write("Upload your dataset or select a sample dataset to visualize with ASCII charts!")
+st.title("ASCII Plotter ●")
+st.write("Upload your dataset or explore with the built-in samples!")
 
 # ---------------------------
 # Step 1: Sample Datasets
@@ -35,129 +35,142 @@ Mint,40,180,65
 Cookie Dough,70,220,90""")
 }
 
-use_sample = st.selectbox("Or select a sample dataset", ["None"] + list(sample_datasets.keys()))
-uploaded_file = st.file_uploader("Upload a CSV or Excel file", type=["csv", "xlsx"])
+# Tabs for sample datasets
+tab1, tab2, tab3 = st.tabs(["🌍 Planetary Data", "⚔️ RPG Stats", "🍦 Ice Cream Survey"])
 
 # ---------------------------
-# Step 2: Load Dataset
+# Step 2: ASCII Chart Functions
 # ---------------------------
-df = None
-if use_sample != "None":
-    df = pd.read_csv(sample_datasets[use_sample])
-elif uploaded_file is not None:
+
+def vertical_bar_chart(values, labels, height=10):
+    max_val = max(values)
+    scale = max_val / height if height > 0 else 1
+    chart_lines = []
+    for i in range(height, 0, -1):
+        line = f"{int(i*scale):>3} ┤ "
+        for val in values:
+            line += "█   " if val >= i*scale else "    "
+        chart_lines.append(line)
+    chart_lines.append("  0 ┼" + "────"*len(values))
+    label_line = "     "
+    for label in labels:
+        label_line += f"{label:<4}"
+    chart_lines.append(label_line)
+    return "\n".join(chart_lines)
+
+def horizontal_bar_chart(values, labels, max_width=20):
+    gradient = ["░", "▒", "▓", "█"]
+    max_val = max(values)
+    chart_lines = []
+    for label, val in zip(labels, values):
+        bar_len = int((val / max_val) * max_width)
+        full_blocks = bar_len // 4
+        remainder = bar_len % 4
+        bar = "█"*full_blocks + (gradient[remainder] if remainder else "")
+        chart_lines.append(f"{label:<12} | {bar:<{max_width}} {val}")
+    return "\n".join(chart_lines)
+
+def line_chart(y_data, height=10):
+    max_val = max(y_data)
+    min_val = min(y_data)
+    scale = (max_val - min_val)/height or 1
+    chart_lines = []
+    for level in range(height, 0, -1):
+        line_val = min_val + level*scale
+        line = f"{int(line_val):>3} ┤ "
+        for y in y_data:
+            line += "╭─╮" if abs(y - line_val) < scale/2 else "   "
+        chart_lines.append(line)
+    chart_lines.append(f"{int(min(y_data))} ┼" + "───"*len(y_data))
+    x_labels = "     "
+    for i in range(len(y_data)):
+        x_labels += f"{i:<3}"
+    chart_lines.append(x_labels)
+    return "\n".join(chart_lines)
+
+def scatter_plot(x, y, width=40, height=10):
+    min_x, max_x = min(x), max(x)
+    min_y, max_y = min(y), max(y)
+    grid = [[" " for _ in range(width)] for _ in range(height)]
+    for xi, yi in zip(x, y):
+        col = int((xi - min_x)/(max_x - min_x)*(width-1))
+        row = height - 1 - int((yi - min_y)/(max_y - min_y)*(height-1))
+        grid[row][col] = "•"
+    chart_lines = []
+    for i, row in enumerate(grid):
+        chart_lines.append(f"{int(max_y - i*(max_y-min_y)/height):>3} | " + "".join(row))
+    chart_lines.append("    " + "-"*width)
+    x_labels = "     "
+    for xi in range(width):
+        x_val = int(min_x + xi*(max_x-min_x)/(width-1))
+        x_labels += f"{x_val%10}"
+    chart_lines.append(x_labels)
+    return "\n".join(chart_lines)
+
+# ---------------------------
+# Step 3: Preview + Chart in Each Tab
+# ---------------------------
+
+with tab1:
+    df = pd.read_csv(sample_datasets["Planetary Data"])
+    st.subheader("Planetary Data Preview")
+    st.dataframe(df.head())
+    st.subheader("Sample Chart (Moons per Planet)")
+    chart_text = vertical_bar_chart(df["Moons"], df["Planet"], height=10)
+    st.text(chart_text)
+
+with tab2:
+    df = pd.read_csv(sample_datasets["RPG Character Stats"])
+    st.subheader("RPG Character Stats Preview")
+    st.dataframe(df.head())
+    st.subheader("Sample Chart (HP by Character)")
+    chart_text = horizontal_bar_chart(df["HP"], df["Character"], max_width=20)
+    st.text(chart_text)
+
+with tab3:
+    df = pd.read_csv(sample_datasets["Ice Cream Survey"])
+    st.subheader("Ice Cream Survey Preview")
+    st.dataframe(df.head())
+    st.subheader("Sample Chart (Votes by Flavor)")
+    chart_text = vertical_bar_chart(df["Votes"], df["Flavor"], height=10)
+    st.text(chart_text)
+
+# ---------------------------
+# Step 4: File Upload (Optional)
+# ---------------------------
+st.divider()
+st.subheader("📂 Upload Your Own Dataset")
+uploaded_file = st.file_uploader("Upload a CSV or Excel file", type=["csv", "xlsx"])
+
+if uploaded_file is not None:
     if uploaded_file.name.endswith(".csv"):
         df = pd.read_csv(uploaded_file)
     else:
         df = pd.read_excel(uploaded_file)
 
-if df is not None:
     st.success("Dataset loaded successfully!")
     st.dataframe(df.head())
 
-    # ---------------------------
-    # Step 3: Select Chart Type
-    # ---------------------------
     chart_type = st.selectbox("Select chart type", ["Vertical Bar Chart", "Horizontal Bar Chart", "Line Chart", "Scatter Plot"])
-
     numeric_cols = df.select_dtypes(include='number').columns.tolist()
-    
+
     if chart_type in ["Vertical Bar Chart", "Horizontal Bar Chart", "Line Chart"]:
-        if len(numeric_cols) == 0:
-            st.warning("No numeric columns found!")
-        else:
+        if numeric_cols:
             y_col = st.selectbox("Select numeric column to plot", numeric_cols)
-            x_col = None
-            if chart_type == "Line Chart":
-                x_col = st.selectbox("Select x-axis (optional)", [None] + df.columns.tolist())
-    elif chart_type == "Scatter Plot":
-        if len(numeric_cols) < 2:
-            st.warning("Need at least two numeric columns for scatter plot!")
         else:
+            y_col = None
+            st.warning("No numeric columns available in dataset")
+    elif chart_type == "Scatter Plot":
+        if len(numeric_cols) >= 2:
             x_col = st.selectbox("Select X column", numeric_cols)
             y_col = st.selectbox("Select Y column", numeric_cols)
+        else:
+            x_col, y_col = None, None
+            st.warning("Need at least two numeric columns for scatter plot")
 
-    # ---------------------------
-    # Step 4: Chart Size
-    # ---------------------------
     width = st.slider("Chart width", 10, 80, 40)
     height = st.slider("Chart height", 5, 20, 10)
 
-    # ---------------------------
-    # Step 5: ASCII Chart Functions
-    # ---------------------------
-
-    # Vertical Bar Chart
-    def vertical_bar_chart(values, labels, height=10):
-        max_val = max(values)
-        scale = max_val / height
-        chart_lines = []
-        for i in range(height, 0, -1):
-            line = f"{int(i*scale):>3} ┤ "
-            for val in values:
-                line += "█   " if val >= i*scale else "    "
-            chart_lines.append(line)
-        chart_lines.append("  0 ┼" + "────"*len(values))
-        label_line = "     "
-        for label in labels:
-            label_line += f"{label:<4}"
-        chart_lines.append(label_line)
-        return "\n".join(chart_lines)
-
-    # Horizontal Bar Chart
-    def horizontal_bar_chart(values, labels, max_width=20):
-        gradient = ["░", "▒", "▓", "█"]
-        max_val = max(values)
-        chart_lines = []
-        for label, val in zip(labels, values):
-            bar_len = int((val / max_val) * max_width)
-            full_blocks = bar_len // 4
-            remainder = bar_len % 4
-            bar = "█"*full_blocks + (gradient[remainder] if remainder else "")
-            chart_lines.append(f"{label:<10} | {bar:<{max_width}} {val}")
-        return "\n".join(chart_lines)
-
-    # Line Chart
-    def line_chart(y_data, height=10):
-        max_val = max(y_data)
-        min_val = min(y_data)
-        scale = (max_val - min_val)/height or 1
-        chart_lines = []
-        for level in range(height, 0, -1):
-            line_val = min_val + level*scale
-            line = f"{int(line_val):>3} ┤ "
-            for y in y_data:
-                line += "╭─╮" if abs(y - line_val) < scale/2 else "   "
-            chart_lines.append(line)
-        chart_lines.append(f"{int(min(y_data))} ┼" + "───"*len(y_data))
-        x_labels = "     "
-        for i in range(len(y_data)):
-            x_labels += f"{i:<3}"
-        chart_lines.append(x_labels)
-        return "\n".join(chart_lines)
-
-    # Scatter Plot
-    def scatter_plot(x, y, width=40, height=10):
-        min_x, max_x = min(x), max(x)
-        min_y, max_y = min(y), max(y)
-        grid = [[" " for _ in range(width)] for _ in range(height)]
-        for xi, yi in zip(x, y):
-            col = int((xi - min_x)/(max_x - min_x)*(width-1))
-            row = height - 1 - int((yi - min_y)/(max_y - min_y)*(height-1))
-            grid[row][col] = "•"
-        chart_lines = []
-        for i, row in enumerate(grid):
-            chart_lines.append(f"{int(max_y - i*(max_y-min_y)/height):>3} | " + "".join(row))
-        chart_lines.append("    " + "-"*width)
-        x_labels = "     "
-        for xi in range(width):
-            x_val = int(min_x + xi*(max_x-min_x)/(width-1))
-            x_labels += f"{x_val%10}"
-        chart_lines.append(x_labels)
-        return "\n".join(chart_lines)
-
-    # ---------------------------
-    # Step 6: Generate Chart
-    # ---------------------------
     chart_text = ""
     if chart_type == "Vertical Bar Chart" and y_col:
         chart_text = vertical_bar_chart(df[y_col], df.index.astype(str), height=height)
