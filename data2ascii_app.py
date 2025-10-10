@@ -19,12 +19,12 @@ st.markdown("""
     
     /* Sidebar styling */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #4a3a52 0%, #392c39 100%);
-        border-right: 2px solid #ff71ce;
+        display: none;
     }
     
-    [data-testid="stSidebar"] * {
-        color: #cfd4c5 !important;
+    /* Hide sidebar collapse button */
+    button[kind="header"] {
+        display: none;
     }
     
     /* Headers with vaporwave glow */
@@ -197,6 +197,17 @@ st.markdown("""
         border-radius: 15px;
         padding: 1rem;
         background: rgba(255, 113, 206, 0.05);
+        position: relative;
+        z-index: 100;
+    }
+    
+    [data-testid="stFileUploader"] section {
+        pointer-events: auto;
+    }
+    
+    [data-testid="stFileUploader"] button {
+        pointer-events: auto;
+        cursor: pointer;
     }
     
     /* Spinner */
@@ -290,22 +301,37 @@ st.markdown("""
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# Sidebar with vaporwave styling
-with st.sidebar:
-    st.markdown("### ⚙️ C O N F I G")
-    st.markdown("---")
-    
+# Main content area - File upload
+st.markdown("### 📁 U P L O A D  D A T A S E T")
+st.markdown("<br>", unsafe_allow_html=True)
+
+col1, col2, col3 = st.columns([1, 2, 1])
+with col2:
     uploaded_file = st.file_uploader(
-        "Upload Dataset ＜（＾－＾）＞", 
+        "Drop your file here or click to browse", 
         type=['csv', 'xlsx', 'txt'],
-        help="Upload a CSV, Excel, or TXT file"
+        help="Upload a CSV, Excel, or TXT file",
+        label_visibility="collapsed"
     )
-    
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+# Display settings on main page
+if uploaded_file is not None:
+    st.markdown("---")
+    st.markdown("### 🎨 D I S P L A Y  S E T T I N G S")
     st.markdown("<br>", unsafe_allow_html=True)
     
-    st.markdown("### 🎨 D I S P L A Y")
-    plot_width = st.slider("Width", 60, 150, 100)
-    plot_height = st.slider("Height", 15, 50, 25)
+    col1, col2 = st.columns(2)
+    with col1:
+        plot_width = st.slider("Width", 60, 150, 100)
+    with col2:
+        plot_height = st.slider("Height", 15, 50, 25)
+else:
+    plot_width = 100
+    plot_height = 25
+
+st.markdown("<br>", unsafe_allow_html=True)
     
     st.markdown("<br><br>", unsafe_allow_html=True)
     st.markdown("""
@@ -314,8 +340,6 @@ with st.sidebar:
             <p style='margin: 0; font-size: 0.8rem;'>A S C I I  A R T</p>
         </div>
     """, unsafe_allow_html=True)
-
-# Main content
 if uploaded_file is not None:
     try:
         # Load data
