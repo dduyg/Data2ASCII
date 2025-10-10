@@ -17,14 +17,14 @@ st.markdown("""
         font-family: 'Fira Sans', sans-serif;
     }
     
-    /* Hide sidebar */
+    /* Sidebar styling */
     [data-testid="stSidebar"] {
-        display: none;
+        background: linear-gradient(180deg, #4a3a52 0%, #392c39 100%);
+        border-right: 2px solid #ff71ce;
     }
     
-    /* Hide sidebar collapse button */
-    button[kind="header"] {
-        display: none;
+    [data-testid="stSidebar"] * {
+        color: #cfd4c5 !important;
     }
     
     /* Headers with vaporwave glow */
@@ -316,22 +316,22 @@ with col2:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# Display settings on main page
-if uploaded_file is not None:
+# Sidebar with settings only
+with st.sidebar:
+    st.markdown("### ⚙️ C O N F I G")
     st.markdown("---")
-    st.markdown("### 🎨 D I S P L A Y  S E T T I N G S")
-    st.markdown("<br>", unsafe_allow_html=True)
     
-    col1, col2 = st.columns(2)
-    with col1:
-        plot_width = st.slider("Width", 60, 150, 100)
-    with col2:
-        plot_height = st.slider("Height", 15, 50, 25)
-else:
-    plot_width = 100
-    plot_height = 25
-
-st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("### 🎨 D I S P L A Y")
+    plot_width = st.slider("Width", 60, 150, 100)
+    plot_height = st.slider("Height", 15, 50, 25)
+    
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    st.markdown("""
+        <div style='text-align: center; padding: 1rem; background: rgba(255, 113, 206, 0.1); border-radius: 10px; border: 1px solid #ff71ce;'>
+            <p style='margin: 0; font-size: 0.9rem; color: #01cdfe;'>✧ V A P O R W A V E ✧</p>
+            <p style='margin: 0; font-size: 0.8rem;'>A S C I I  A R T</p>
+        </div>
+    """, unsafe_allow_html=True)
 
 # Main content
 if uploaded_file is not None:
