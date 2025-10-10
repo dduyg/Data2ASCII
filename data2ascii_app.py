@@ -1,187 +1,540 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 from io import StringIO
+import plotext as plt
 
-st.set_page_config(page_title="ASCII Graph Plotter", layout="wide")
-st.title("ASCII Plotter ●")
-st.write("Upload your dataset or explore with the built-in samples!")
+st.set_page_config(page_title="Data2ASCII ＜（＾－＾）＞", page_icon="🌸", layout="wide")
 
-# ---------------------------
-# Step 1: Sample Datasets
-# ---------------------------
-sample_datasets = {
-    "Planetary Data": StringIO("""Planet,Diameter_km,Distance_from_Sun_million_km,Moons
-Mercury,4879,57.9,0
-Venus,12104,108.2,0
-Earth,12742,149.6,1
-Mars,6779,227.9,2
-Jupiter,139820,778.5,79
-Saturn,116460,1434,83
-Uranus,50724,2871,27
-Neptune,49244,4495,14"""),
+# Vaporwave CSS styling
+st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fira+Sans:wght@300;400;700&display=swap');
     
-    "RPG Character Stats": StringIO("""Character,Level,HP,Mana,Strength,Agility
-Elf,5,120,200,15,25
-Warrior,8,250,50,30,10
-Mage,7,100,300,10,15
-Rogue,6,150,80,20,30
-Dragon,10,500,150,50,20"""),
+    /* Main app styling */
+    .stApp {
+        background: linear-gradient(135deg, #392c39 0%, #2d1f3d 50%, #392c39 100%);
+        color: #cfd4c5;
+        font-family: 'Fira Sans', sans-serif;
+    }
     
-    "Ice Cream Survey": StringIO("""Flavor,Votes,Calories,Popularity
-Chocolate,120,210,95
-Vanilla,80,200,85
-Strawberry,50,190,75
-Mint,40,180,65
-Cookie Dough,70,220,90""")
-}
+    /* Sidebar styling */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #4a3a52 0%, #392c39 100%);
+        border-right: 2px solid #ff71ce;
+    }
+    
+    [data-testid="stSidebar"] * {
+        color: #cfd4c5 !important;
+    }
+    
+    /* Headers with vaporwave glow */
+    h1, h2, h3 {
+        color: #ff71ce;
+        text-shadow: 0 0 10px #ff71ce, 0 0 20px #ff71ce, 0 0 30px #01cdfe;
+        font-weight: 700;
+        letter-spacing: 2px;
+    }
+    
+    h1 {
+        font-size: 3rem !important;
+        text-align: center;
+        margin-bottom: 0 !important;
+    }
+    
+    /* Glowing dividers */
+    hr {
+        border: none;
+        height: 2px;
+        background: linear-gradient(90deg, #ff71ce, #01cdfe, #b967ff, #ff71ce);
+        box-shadow: 0 0 10px #01cdfe;
+        margin: 2rem 0;
+    }
+    
+    /* Buttons with vaporwave style */
+    .stButton > button {
+        background: linear-gradient(135deg, #ff71ce 0%, #b967ff 100%);
+        color: #0f0326;
+        border: 2px solid #01cdfe;
+        border-radius: 20px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        padding: 0.75rem 2rem;
+        box-shadow: 0 0 20px rgba(1, 205, 254, 0.5);
+        transition: all 0.3s ease;
+    }
+    
+    .stButton > button:hover {
+        background: linear-gradient(135deg, #01cdfe 0%, #b967ff 100%);
+        box-shadow: 0 0 30px rgba(255, 113, 206, 0.8);
+        transform: scale(1.05);
+    }
+    
+    /* Download buttons */
+    .stDownloadButton > button {
+        background: linear-gradient(135deg, #01cdfe 0%, #05ffa1 100%);
+        color: #0f0326;
+        border: 2px solid #ff71ce;
+        border-radius: 15px;
+        font-weight: 700;
+        padding: 0.6rem 1.5rem;
+        box-shadow: 0 0 15px rgba(5, 255, 161, 0.5);
+    }
+    
+    .stDownloadButton > button:hover {
+        background: linear-gradient(135deg, #05ffa1 0%, #01cdfe 100%);
+        box-shadow: 0 0 25px rgba(1, 205, 254, 0.8);
+    }
+    
+    /* Input elements */
+    .stSelectbox, .stSlider, .stRadio {
+        color: #cfd4c5;
+    }
+    
+    .stSelectbox > div > div {
+        background-color: #2d1f3d;
+        border: 2px solid #b967ff;
+        border-radius: 10px;
+        color: #cfd4c5;
+    }
+    
+    /* Code blocks (ASCII output) */
+    .stCodeBlock {
+        background: #1a0f1f !important;
+        border: 2px solid #ff71ce;
+        border-radius: 15px;
+        box-shadow: 0 0 30px rgba(255, 113, 206, 0.3), inset 0 0 20px rgba(1, 205, 254, 0.1);
+    }
+    
+    code {
+        color: #05ffa1 !important;
+        font-family: 'Courier New', monospace;
+    }
+    
+    /* Info boxes */
+    .stAlert {
+        background: rgba(1, 205, 254, 0.1);
+        border: 2px solid #01cdfe;
+        border-radius: 10px;
+        color: #cfd4c5;
+    }
+    
+    /* Success messages */
+    .stSuccess {
+        background: rgba(5, 255, 161, 0.1);
+        border: 2px solid #05ffa1;
+        color: #05ffa1;
+    }
+    
+    /* Dataframe styling */
+    .stDataFrame {
+        border: 2px solid #b967ff;
+        border-radius: 10px;
+    }
+    
+    /* Expander */
+    .streamlit-expanderHeader {
+        background: rgba(185, 103, 255, 0.2);
+        border-radius: 10px;
+        color: #ff71ce !important;
+        font-weight: 700;
+    }
+    
+    /* Radio buttons */
+    .stRadio > label {
+        color: #ff71ce !important;
+        font-weight: 700;
+    }
+    
+    /* Slider */
+    .stSlider > div > div > div {
+        background: linear-gradient(90deg, #ff71ce, #01cdfe);
+    }
+    
+    /* Text styling */
+    p, li, label {
+        color: #cfd4c5;
+        font-size: 1rem;
+    }
+    
+    /* Markdown styling */
+    .stMarkdown {
+        color: #cfd4c5;
+    }
+    
+    /* Grid effect overlay */
+    .stApp::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image: 
+            linear-gradient(rgba(1, 205, 254, 0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(1, 205, 254, 0.03) 1px, transparent 1px);
+        background-size: 50px 50px;
+        pointer-events: none;
+        z-index: 0;
+    }
+    
+    /* Neon border effect */
+    .main > div {
+        border: 1px solid rgba(255, 113, 206, 0.3);
+        border-radius: 20px;
+        padding: 2rem;
+        backdrop-filter: blur(10px);
+    }
+    
+    /* Custom container styling */
+    .element-container {
+        z-index: 1;
+    }
+    
+    /* File uploader */
+    [data-testid="stFileUploader"] {
+        border: 2px dashed #ff71ce;
+        border-radius: 15px;
+        padding: 1rem;
+        background: rgba(255, 113, 206, 0.05);
+    }
+    
+    /* Spinner */
+    .stSpinner > div {
+        border-top-color: #ff71ce !important;
+        border-right-color: #01cdfe !important;
+        border-bottom-color: #b967ff !important;
+        border-left-color: #05ffa1 !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
-# Tabs for sample datasets
-tab1, tab2, tab3 = st.tabs(["🌍 Planetary Data", "⚔️ RPG Stats", "🍦 Ice Cream Survey"])
+def create_scatter_ascii(x_data, y_data, width=100, height=30):
+    """Create ASCII scatter plot"""
+    plt.clf()
+    plt.plot_size(width, height)
+    plt.scatter(x_data, y_data)
+    plt.theme('clear')
+    return plt.build()
 
-# ---------------------------
-# Step 2: ASCII Chart Functions
-# ---------------------------
+def create_line_ascii(x_data, y_data, width=100, height=30):
+    """Create ASCII line plot"""
+    plt.clf()
+    plt.plot_size(width, height)
+    plt.plot(x_data, y_data)
+    plt.theme('clear')
+    return plt.build()
 
-def vertical_bar_chart(values, labels, height=10):
-    max_val = max(values)
-    scale = max_val / height if height > 0 else 1
-    chart_lines = []
-    for i in range(height, 0, -1):
-        line = f"{int(i*scale):>3} ┤ "
-        for val in values:
-            line += "█   " if val >= i*scale else "    "
-        chart_lines.append(line)
-    chart_lines.append("  0 ┼" + "────"*len(values))
-    label_line = "     "
-    for label in labels:
-        label_line += f"{label:<4}"
-    chart_lines.append(label_line)
-    return "\n".join(chart_lines)
+def create_bar_ascii(labels, values, width=100, height=30):
+    """Create ASCII bar chart"""
+    plt.clf()
+    plt.plot_size(width, height)
+    plt.bar(labels, values)
+    plt.theme('clear')
+    return plt.build()
 
-def horizontal_bar_chart(values, labels, max_width=20):
-    gradient = ["░", "▒", "▓", "█"]
-    max_val = max(values)
-    chart_lines = []
-    for label, val in zip(labels, values):
-        bar_len = int((val / max_val) * max_width)
-        full_blocks = bar_len // 4
-        remainder = bar_len % 4
-        bar = "█"*full_blocks + (gradient[remainder] if remainder else "")
-        chart_lines.append(f"{label:<12} | {bar:<{max_width}} {val}")
-    return "\n".join(chart_lines)
+def create_histogram_ascii(data, bins=20, width=100, height=30):
+    """Create ASCII histogram"""
+    plt.clf()
+    plt.plot_size(width, height)
+    plt.hist(data, bins=bins)
+    plt.theme('clear')
+    return plt.build()
 
-def line_chart(y_data, height=10):
-    max_val = max(y_data)
-    min_val = min(y_data)
-    scale = (max_val - min_val)/height or 1
-    chart_lines = []
-    for level in range(height, 0, -1):
-        line_val = min_val + level*scale
-        line = f"{int(line_val):>3} ┤ "
-        for y in y_data:
-            line += "╭─╮" if abs(y - line_val) < scale/2 else "   "
-        chart_lines.append(line)
-    chart_lines.append(f"{int(min(y_data))} ┼" + "───"*len(y_data))
-    x_labels = "     "
-    for i in range(len(y_data)):
-        x_labels += f"{i:<3}"
-    chart_lines.append(x_labels)
-    return "\n".join(chart_lines)
+def create_simple_ascii_chart(x_data, y_data, width=80, height=20, chart_type='line'):
+    """Create simple ASCII chart using basic characters"""
+    x_norm = np.array(x_data)
+    y_norm = np.array(y_data)
+    
+    y_min, y_max = y_norm.min(), y_norm.max()
+    if y_max == y_min:
+        y_max = y_min + 1
+    
+    y_scaled = ((y_norm - y_min) / (y_max - y_min) * (height - 1)).astype(int)
+    
+    grid = [[' ' for _ in range(width)] for _ in range(height)]
+    
+    step = max(1, len(x_data) // width)
+    for i in range(0, len(x_data), step):
+        x_pos = min(int((i / len(x_data)) * (width - 1)), width - 1)
+        y_pos = height - 1 - y_scaled[i]
+        
+        if chart_type == 'scatter':
+            grid[y_pos][x_pos] = '●'
+        elif chart_type == 'line':
+            grid[y_pos][x_pos] = '█'
+        elif chart_type == 'bar':
+            for j in range(y_pos, height):
+                grid[j][x_pos] = '█'
+    
+    result = []
+    result.append('┌' + '─' * width + '┐')
+    for row in grid:
+        result.append('│' + ''.join(row) + '│')
+    result.append('└' + '─' * width + '┘')
+    
+    return '\n'.join(result)
 
-def scatter_plot(x, y, width=40, height=10):
-    min_x, max_x = min(x), max(x)
-    min_y, max_y = min(y), max(y)
-    grid = [[" " for _ in range(width)] for _ in range(height)]
-    for xi, yi in zip(x, y):
-        col = int((xi - min_x)/(max_x - min_x)*(width-1))
-        row = height - 1 - int((yi - min_y)/(max_y - min_y)*(height-1))
-        grid[row][col] = "•"
-    chart_lines = []
-    for i, row in enumerate(grid):
-        chart_lines.append(f"{int(max_y - i*(max_y-min_y)/height):>3} | " + "".join(row))
-    chart_lines.append("    " + "-"*width)
-    x_labels = "     "
-    for xi in range(width):
-        x_val = int(min_x + xi*(max_x-min_x)/(width-1))
-        x_labels += f"{x_val%10}"
-    chart_lines.append(x_labels)
-    return "\n".join(chart_lines)
+# Title with vaporwave aesthetic
+st.markdown("""
+    <h1 style='text-align: center; margin-bottom: 0;'>
+        ✧･ﾟ: *✧･ﾟ:* DATA2ASCII *:･ﾟ✧*:･ﾟ✧
+    </h1>
+    <p style='text-align: center; color: #01cdfe; font-size: 1.2rem; margin-top: 0; letter-spacing: 3px;'>
+        ～ A E S T H E T I C  D A T A  V I S U A L I Z A T I O N ～
+    </p>
+""", unsafe_allow_html=True)
 
-# ---------------------------
-# Step 3: Preview + Chart in Each Tab
-# ---------------------------
+st.markdown("<br>", unsafe_allow_html=True)
 
-with tab1:
-    df = pd.read_csv(sample_datasets["Planetary Data"])
-    st.subheader("Planetary Data Preview")
-    st.dataframe(df.head())
-    st.subheader("Sample Chart (Moons per Planet)")
-    chart_text = vertical_bar_chart(df["Moons"], df["Planet"], height=10)
-    st.text(chart_text)
+# Sidebar with vaporwave styling
+with st.sidebar:
+    st.markdown("### ⚙️ C O N F I G")
+    st.markdown("---")
+    
+    uploaded_file = st.file_uploader(
+        "Upload Dataset ＜（＾－＾）＞", 
+        type=['csv', 'xlsx', 'txt'],
+        help="Upload a CSV, Excel, or TXT file"
+    )
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    st.markdown("### 🎨 D I S P L A Y")
+    plot_width = st.slider("Width", 60, 150, 100)
+    plot_height = st.slider("Height", 15, 50, 25)
+    
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    st.markdown("""
+        <div style='text-align: center; padding: 1rem; background: rgba(255, 113, 206, 0.1); border-radius: 10px; border: 1px solid #ff71ce;'>
+            <p style='margin: 0; font-size: 0.9rem; color: #01cdfe;'>✧ V A P O R W A V E ✧</p>
+            <p style='margin: 0; font-size: 0.8rem;'>A S C I I  A R T</p>
+        </div>
+    """, unsafe_allow_html=True)
 
-with tab2:
-    df = pd.read_csv(sample_datasets["RPG Character Stats"])
-    st.subheader("RPG Character Stats Preview")
-    st.dataframe(df.head())
-    st.subheader("Sample Chart (HP by Character)")
-    chart_text = horizontal_bar_chart(df["HP"], df["Character"], max_width=20)
-    st.text(chart_text)
-
-with tab3:
-    df = pd.read_csv(sample_datasets["Ice Cream Survey"])
-    st.subheader("Ice Cream Survey Preview")
-    st.dataframe(df.head())
-    st.subheader("Sample Chart (Votes by Flavor)")
-    chart_text = vertical_bar_chart(df["Votes"], df["Flavor"], height=10)
-    st.text(chart_text)
-
-# ---------------------------
-# Step 4: File Upload (Optional)
-# ---------------------------
-st.divider()
-st.subheader("📂 Upload Your Own Dataset")
-uploaded_file = st.file_uploader("Upload a CSV or Excel file", type=["csv", "xlsx"])
-
+# Main content
 if uploaded_file is not None:
-    if uploaded_file.name.endswith(".csv"):
-        df = pd.read_csv(uploaded_file)
-    else:
-        df = pd.read_excel(uploaded_file)
-
-    st.success("Dataset loaded successfully!")
-    st.dataframe(df.head())
-
-    chart_type = st.selectbox("Select chart type", ["Vertical Bar Chart", "Horizontal Bar Chart", "Line Chart", "Scatter Plot"])
-    numeric_cols = df.select_dtypes(include='number').columns.tolist()
-
-    if chart_type in ["Vertical Bar Chart", "Horizontal Bar Chart", "Line Chart"]:
-        if numeric_cols:
-            y_col = st.selectbox("Select numeric column to plot", numeric_cols)
+    try:
+        # Load data
+        if uploaded_file.name.endswith('.csv') or uploaded_file.name.endswith('.txt'):
+            df = pd.read_csv(uploaded_file)
         else:
-            y_col = None
-            st.warning("No numeric columns available in dataset")
-    elif chart_type == "Scatter Plot":
-        if len(numeric_cols) >= 2:
-            x_col = st.selectbox("Select X column", numeric_cols)
-            y_col = st.selectbox("Select Y column", numeric_cols)
-        else:
-            x_col, y_col = None, None
-            st.warning("Need at least two numeric columns for scatter plot")
+            df = pd.read_excel(uploaded_file)
+        
+        st.success(f"✨ L O A D E D  {len(df)} rows × {len(df.columns)} columns ✨")
+        
+        # Data preview
+        with st.expander("📋 D A T A  P R E V I E W", expanded=False):
+            st.dataframe(df.head(20), use_container_width=True)
+        
+        st.markdown("---")
+        
+        # Variable selection
+        st.markdown("### 🎯 S E L E C T  V A R I A B L E S")
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        col1, col2 = st.columns(2)
+        
+        numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+        all_cols = df.columns.tolist()
+        
+        with col1:
+            x_var = st.selectbox(
+                "X-axis Variable ➤",
+                options=all_cols,
+                help="Select the variable for X-axis"
+            )
+        
+        with col2:
+            y_var = st.selectbox(
+                "Y-axis Variable ➤",
+                options=numeric_cols,
+                help="Select the numeric variable for Y-axis"
+            )
+        
+        st.markdown("---")
+        
+        # Chart type selection
+        st.markdown("### 📈 V I S U A L I Z A T I O N  T Y P E")
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        chart_type = st.radio(
+            "Choose your aesthetic:",
+            ["✧ Line Chart", "✧ Scatter Plot", "✧ Bar Chart", "✧ Histogram (Y-axis only)"],
+            horizontal=True
+        )
+        
+        st.markdown("---")
+        
+        # Generate button
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            generate_btn = st.button("✧ G E N E R A T E  A S C I I ✧", type="primary", use_container_width=True)
+        
+        if generate_btn:
+            with st.spinner("✨ Creating vaporwave ASCII art... ✨"):
+                try:
+                    ascii_output = ""
+                    chart_name = chart_type.replace("✧ ", "")
+                    
+                    if "Histogram" in chart_name:
+                        ascii_output = create_histogram_ascii(
+                            df[y_var].dropna(),
+                            bins=20,
+                            width=plot_width,
+                            height=plot_height
+                        )
+                    elif "Bar Chart" in chart_name:
+                        if len(df) > 50:
+                            st.warning("⚠ Dataset too large for bar chart. Using first 50 rows.")
+                            data_subset = df.head(50)
+                        else:
+                            data_subset = df
+                        
+                        labels = [str(x)[:10] for x in data_subset[x_var].values]
+                        values = data_subset[y_var].values
+                        ascii_output = create_bar_ascii(
+                            labels,
+                            values,
+                            width=plot_width,
+                            height=plot_height
+                        )
+                    else:
+                        x_data = pd.to_numeric(df[x_var], errors='coerce').dropna()
+                        y_data = df[y_var].loc[x_data.index]
+                        
+                        if "Line Chart" in chart_name:
+                            ascii_output = create_line_ascii(
+                                x_data.values,
+                                y_data.values,
+                                width=plot_width,
+                                height=plot_height
+                            )
+                        else:  # Scatter Plot
+                            ascii_output = create_scatter_ascii(
+                                x_data.values,
+                                y_data.values,
+                                width=plot_width,
+                                height=plot_height
+                            )
+                    
+                    st.session_state.ascii_plot = ascii_output
+                    st.session_state.chart_info = f"{chart_name}: {x_var} vs {y_var}"
+                    
+                except Exception as e:
+                    st.error(f"❌ Error: {str(e)}")
+                    st.info("✧ Trying alternative ASCII rendering... ✧")
+                    x_data = pd.to_numeric(df[x_var], errors='coerce').dropna()
+                    y_data = df[y_var].loc[x_data.index]
+                    chart_map = {
+                        "✧ Line Chart": "line",
+                        "✧ Scatter Plot": "scatter",
+                        "✧ Bar Chart": "bar"
+                    }
+                    ascii_output = create_simple_ascii_chart(
+                        x_data.values,
+                        y_data.values,
+                        width=plot_width,
+                        height=plot_height,
+                        chart_type=chart_map.get(chart_type, 'line')
+                    )
+                    st.session_state.ascii_plot = ascii_output
+                    st.session_state.chart_info = f"{chart_type.replace('✧ ', '')}: {x_var} vs {y_var}"
+        
+        # Display ASCII plot
+        if 'ascii_plot' in st.session_state:
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("### ✨ A S C I I  V I S U A L I Z A T I O N ✨")
+            st.markdown(f"<p style='text-align: center; color: #01cdfe; font-size: 1.1rem;'>{st.session_state.chart_info}</p>", unsafe_allow_html=True)
+            
+            st.code(st.session_state.ascii_plot, language=None)
+            
+            st.markdown("---")
+            st.markdown("### 💾 E X P O R T  O P T I O N S")
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.download_button(
+                    label="📋 Download as TXT",
+                    data=st.session_state.ascii_plot,
+                    file_name=f"ascii_vaporwave_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.txt",
+                    mime="text/plain",
+                    use_container_width=True
+                )
+            
+            with col2:
+                metadata = f"# {st.session_state.chart_info}\n# Generated: {pd.Timestamp.now()}\n# Dimensions: {plot_width}x{plot_height}\n# ✧･ﾟ: *✧･ﾟ:* VAPORWAVE ASCII *:･ﾟ✧*:･ﾟ✧\n\n"
+                full_output = metadata + st.session_state.ascii_plot
+                
+                st.download_button(
+                    label="📄 Download with Metadata",
+                    data=full_output,
+                    file_name=f"ascii_vaporwave_full_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.txt",
+                    mime="text/plain",
+                    use_container_width=True
+                )
+    
+    except Exception as e:
+        st.error(f"❌ Error loading file: {str(e)}")
+        st.info("Please make sure your file is properly formatted (CSV or Excel)")
 
-    width = st.slider("Chart width", 10, 80, 40)
-    height = st.slider("Chart height", 5, 20, 10)
+else:
+    # Welcome screen with vaporwave aesthetic
+    st.markdown("""
+        <div style='text-align: center; padding: 3rem 2rem; background: rgba(1, 205, 254, 0.05); border-radius: 20px; border: 2px solid #ff71ce; margin: 2rem 0;'>
+            <h2 style='margin: 0;'>✧ W E L C O M E ✧</h2>
+            <p style='font-size: 1.2rem; color: #01cdfe; margin-top: 1rem;'>Upload a dataset to begin your journey</p>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+        ### 🎯 H O W  T O  U S E
+        
+        **1.** Upload your dataset (CSV/Excel)
+        
+        **2.** Select variables to visualize
+        
+        **3.** Choose visualization type
+        
+        **4.** Customize dimensions
+        
+        **5.** Generate ASCII art
+        
+        **6.** Download your creation
+        """)
+    
+    with col2:
+        st.markdown("""
+        ### 📊 C H A R T  T Y P E S
+        
+        ✧ **Line Charts** - Flowing connections
+        
+        ✧ **Scatter Plots** - Point distributions
+        
+        ✧ **Bar Charts** - Categorical data
+        
+        ✧ **Histograms** - Data distributions
+        """)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("""
+        <div style='text-align: center; padding: 2rem; background: rgba(185, 103, 255, 0.1); border-radius: 15px; border: 1px solid #b967ff;'>
+            <p style='font-size: 1.1rem; color: #ff71ce; margin: 0;'>✧･ﾟ: *✧･ﾟ:* Perfect for README files, documentation, and retro aesthetics *:･ﾟ✧*:･ﾟ✧</p>
+        </div>
+    """, unsafe_allow_html=True)
 
-    chart_text = ""
-    if chart_type == "Vertical Bar Chart" and y_col:
-        chart_text = vertical_bar_chart(df[y_col], df.index.astype(str), height=height)
-    elif chart_type == "Horizontal Bar Chart" and y_col:
-        chart_text = horizontal_bar_chart(df[y_col], df.index.astype(str), max_width=width)
-    elif chart_type == "Line Chart" and y_col:
-        chart_text = line_chart(df[y_col], height=height)
-    elif chart_type == "Scatter Plot" and x_col and y_col:
-        chart_text = scatter_plot(df[x_col], df[y_col], width=width, height=height)
-
-    if chart_text:
-        st.subheader("ASCII Chart")
-        st.text(chart_text)
-        st.download_button("Download ASCII Chart", chart_text, file_name="ascii_chart.txt")
+# Footer with vaporwave style
+st.markdown("<br><br>", unsafe_allow_html=True)
+st.markdown("---")
+st.markdown("""
+    <div style='text-align: center; padding: 1rem;'>
+        <p style='color: #ff71ce; font-size: 0.9rem; margin: 0;'>✧ Made with 💜 using Streamlit ✧</p>
+        <p style='color: #01cdfe; font-size: 0.8rem; margin: 0;'>DATA2ASCII v1.0 - Vaporwave Edition</p>
+    </div>
+""", unsafe_allow_html=True)
