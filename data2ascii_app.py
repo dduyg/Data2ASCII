@@ -17,7 +17,7 @@ st.markdown("""
         font-family: 'Fira Sans', sans-serif;
     }
     
-    /* Sidebar styling */
+    /* Hide sidebar */
     [data-testid="stSidebar"] {
         display: none;
     }
@@ -332,14 +332,8 @@ else:
     plot_height = 25
 
 st.markdown("<br>", unsafe_allow_html=True)
-    
-    st.markdown("<br><br>", unsafe_allow_html=True)
-    st.markdown("""
-        <div style='text-align: center; padding: 1rem; background: rgba(255, 113, 206, 0.1); border-radius: 10px; border: 1px solid #ff71ce;'>
-            <p style='margin: 0; font-size: 0.9rem; color: #01cdfe;'>✧ V A P O R W A V E ✧</p>
-            <p style='margin: 0; font-size: 0.8rem;'>A S C I I  A R T</p>
-        </div>
-    """, unsafe_allow_html=True)
+
+# Main content
 if uploaded_file is not None:
     try:
         # Load data
