@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from io import StringIO
-import plotext as plt
 
 st.set_page_config(page_title="Data2ASCII ＜（＾－＾）＞", page_icon="🌸", layout="wide")
 
@@ -212,35 +211,21 @@ st.markdown("""
 
 def create_scatter_ascii(x_data, y_data, width=100, height=30):
     """Create ASCII scatter plot"""
-    plt.clf()
-    plt.plot_size(width, height)
-    plt.scatter(x_data, y_data)
-    plt.theme('clear')
-    return plt.build()
+    return create_simple_ascii_chart(x_data, y_data, width, height, 'scatter')
 
 def create_line_ascii(x_data, y_data, width=100, height=30):
     """Create ASCII line plot"""
-    plt.clf()
-    plt.plot_size(width, height)
-    plt.plot(x_data, y_data)
-    plt.theme('clear')
-    return plt.build()
+    return create_simple_ascii_chart(x_data, y_data, width, height, 'line')
 
-def create_bar_ascii(labels, values, width=100, height=30):
+def create_bar_ascii(x_data, y_data, width=100, height=30):
     """Create ASCII bar chart"""
-    plt.clf()
-    plt.plot_size(width, height)
-    plt.bar(labels, values)
-    plt.theme('clear')
-    return plt.build()
+    return create_simple_ascii_chart(x_data, y_data, width, height, 'bar')
 
 def create_histogram_ascii(data, bins=20, width=100, height=30):
     """Create ASCII histogram"""
-    plt.clf()
-    plt.plot_size(width, height)
-    plt.hist(data, bins=bins)
-    plt.theme('clear')
-    return plt.build()
+    hist, bin_edges = np.histogram(data, bins=bins)
+    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+    return create_simple_ascii_chart(bin_centers, hist, width, height, 'bar')
 
 def create_simple_ascii_chart(x_data, y_data, width=80, height=20, chart_type='line'):
     """Create simple ASCII chart using basic characters"""
@@ -264,6 +249,20 @@ def create_simple_ascii_chart(x_data, y_data, width=80, height=20, chart_type='l
             grid[y_pos][x_pos] = '●'
         elif chart_type == 'line':
             grid[y_pos][x_pos] = '█'
+            # Connect points for line chart
+            if i > 0:
+                prev_i = max(0, i - step)
+                prev_x = min(int((prev_i / len(x_data)) * (width - 1)), width - 1)
+                prev_y = height - 1 - y_scaled[prev_i]
+                # Draw line between points
+                if prev_x != x_pos:
+                    for x in range(min(prev_x, x_pos), max(prev_x, x_pos) + 1):
+                        if prev_y != y_pos:
+                            y = prev_y + int((y_pos - prev_y) * (x - prev_x) / (x_pos - prev_x))
+                        else:
+                            y = prev_y
+                        if 0 <= y < height and 0 <= x < width:
+                            grid[y][x] = '█'
         elif chart_type == 'bar':
             for j in range(y_pos, height):
                 grid[j][x_pos] = '█'
@@ -273,6 +272,9 @@ def create_simple_ascii_chart(x_data, y_data, width=80, height=20, chart_type='l
     for row in grid:
         result.append('│' + ''.join(row) + '│')
     result.append('└' + '─' * width + '┘')
+    
+    # Add axis labels
+    result.append(f"\nMin: {y_min:.2f}  Max: {y_max:.2f}")
     
     return '\n'.join(result)
 
@@ -392,11 +394,11 @@ if uploaded_file is not None:
                         else:
                             data_subset = df
                         
-                        labels = [str(x)[:10] for x in data_subset[x_var].values]
-                        values = data_subset[y_var].values
+                        x_data = pd.to_numeric(range(len(data_subset)), errors='coerce')
+                        y_data = data_subset[y_var].values
                         ascii_output = create_bar_ascii(
-                            labels,
-                            values,
+                            x_data,
+                            y_data,
                             width=plot_width,
                             height=plot_height
                         )
@@ -424,23 +426,26 @@ if uploaded_file is not None:
                     
                 except Exception as e:
                     st.error(f"❌ Error: {str(e)}")
-                    st.info("✧ Trying alternative ASCII rendering... ✧")
-                    x_data = pd.to_numeric(df[x_var], errors='coerce').dropna()
-                    y_data = df[y_var].loc[x_data.index]
-                    chart_map = {
-                        "✧ Line Chart": "line",
-                        "✧ Scatter Plot": "scatter",
-                        "✧ Bar Chart": "bar"
-                    }
-                    ascii_output = create_simple_ascii_chart(
-                        x_data.values,
-                        y_data.values,
-                        width=plot_width,
-                        height=plot_height,
-                        chart_type=chart_map.get(chart_type, 'line')
-                    )
-                    st.session_state.ascii_plot = ascii_output
-                    st.session_state.chart_info = f"{chart_type.replace('✧ ', '')}: {x_var} vs {y_var}"
+                    try:
+                        st.info("✧ Trying alternative ASCII rendering... ✧")
+                        x_data = pd.to_numeric(df[x_var], errors='coerce').dropna()
+                        y_data = df[y_var].loc[x_data.index]
+                        chart_map = {
+                            "✧ Line Chart": "line",
+                            "✧ Scatter Plot": "scatter",
+                            "✧ Bar Chart": "bar"
+                        }
+                        ascii_output = create_simple_ascii_chart(
+                            x_data.values,
+                            y_data.values,
+                            width=plot_width,
+                            height=plot_height,
+                            chart_type=chart_map.get(chart_type, 'line')
+                        )
+                        st.session_state.ascii_plot = ascii_output
+                        st.session_state.chart_info = f"{chart_type.replace('✧ ', '')}: {x_var} vs {y_var}"
+                    except Exception as e2:
+                        st.error(f"❌ Could not generate chart: {str(e2)}")
         
         # Display ASCII plot
         if 'ascii_plot' in st.session_state:
